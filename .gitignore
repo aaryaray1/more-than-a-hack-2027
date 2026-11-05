@@ -64,5 +64,5 @@ env/
 .DS_Store
 
 # -- local planning notes ----------------------------------------------------------------------
-planning/
+
 CLAUDE.md
