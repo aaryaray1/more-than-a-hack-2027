@@ -66,3 +66,6 @@ env/
 # -- local planning notes ----------------------------------------------------------------------
 
 CLAUDE.md
+
+# -- other-game datasets (CC-BY, multi-GB) ------------------------------------------------------
+validation/cache/

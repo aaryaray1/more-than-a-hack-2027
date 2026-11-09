@@ -1,7 +1,8 @@
 # MTAH 2027 Phase 1 — Ball Possession: plan
 
-Local-only (gitignored). Read at the start of every session, update the Status table at the end.
+Committed to the public repo, so aggregates only: never raw data extracts. Read at the start of every session, update the Status table at the end.
 Written 2026-11-05. Deadline **2026-11-17**. Target submit **2026-11-16** (1 day buffer).
+Accuracy levers, evidence and the experiment log live in **`planning/IMPROVEMENTS.md`**. Update it after every experiment.
 
 ## 1. What the challenge really is
 
@@ -116,9 +117,9 @@ Each phase = one focused Claude session. Start a session with: "read planning/PL
 | 2 | Dead-ball v1 + first real submission | `deadball.py`, `run.py`, rule-based control + smoothing | validated file, sanity-checked on public window | medium |
 | 3 | Validation harness on other games | open other-game tracking+events (verify availability) → possession labels from events → degrade tracking to look like ATD (drop ball ~41% in bursts, fragment tracks, strip IDs) → run pipeline + spellF1 | numbers on ≥ 2 other games | medium |
 | 4 | Decoder + control model | `control.py`, `decode.py` (HSMM), tune params on the harness only | beats phase 2 on the harness beyond noise | high |
-| 5 | Ball gap filling | `ball.py`: interpolation + Kalman bridge, `X` inside safe gaps | harness gain | medium |
+| 5 | Gap classification + ball-free possession (re-scoped 11-09) | per-gap dead/live classifier (S1), team-shape possession (P3); interpolation dropped (0.3% of missing frames are in gaps ≤ 5 s) | harness gain | medium |
 | 6 | Stretch: audio whistles | `audio.py` (ffmpeg → wav locally, band energy 2.5–4.5 kHz, tonal peaks) fused into dead-ball | harness can't test audio → check agreement with set-piece tags | medium |
-| 7 | Stretch: CV ball re-detection | YOLO ball detector trained on other games' data, run on ATD-missing frames, back-project via homography (ground-plane only) | GPU run ≈ 30–60 min; fill rate reported | high |
+| 7 | CV ball recovery (promoted 11-09) | B1-spike → self-train detector on ATD-ball pseudo-labels (B1a) → run in gaps (B1b); or broadcast-ATD fusion (B2). Pick by spike numbers | GPU run ≈ 30–60 min; fill rate reported | high |
 | 8 | Freeze + deliverables | determinism check (2 runs → identical hash), README, tech doc, `<team>.csv` / `<team>.pdf` | validator passes on the exact file uploaded | medium |
 
 ## 8. Calendar
@@ -134,6 +135,19 @@ Each phase = one focused Claude session. Start a session with: "read planning/PL
 | Nov 14 | feature freeze |
 | Nov 15 | phase 8: repro check + tech doc |
 | Nov 16 | final submission. Nov 17 = buffer |
+
+### Re-plan 2026-11-09 (3 days behind; nothing built before today)
+
+| date | work |
+|---|---|
+| Mon Nov 9 | phase 0 (done) · E1 availability check · phase 1 cache · phase 2 first submission (S2+S4+P1+R1), upload early |
+| Tue Nov 10 | phase 3 harness: E1 + long-gap degradation E2 + E3 |
+| Wed Nov 11 | phase 4: S1 + D1 + T1 on harness. Teammate: B1-spike + B2 sizing on GPU |
+| Thu Nov 12 | phase 4 tuning (D5, D6) + phase 5 (P3) |
+| Fri Nov 13 | phase 7 B1 or B2, whichever the spikes favour; A1 only if ahead |
+| Sat Nov 14 | feature freeze |
+| Sun Nov 15 | phase 8: repro check + tech doc |
+| Mon Nov 16 | final submission. Tue Nov 17 = buffer |
 
 ## 9. Saving Claude budget
 
@@ -161,7 +175,7 @@ Each phase = one focused Claude session. Start a session with: "read planning/PL
 
 | phase | state | notes |
 |---|---|---|
-| 0 | todo | also: `git restore data/README.md` (deleted in working tree) |
+| 0 | done 11-09 | `.venv` (py 3.10, numpy 2.2.6, pandas 2.3.3, kloppy 3.18.0, scipy, pytest); system python has no pandas. 25 tests in `solution/tests` pass (metric contract, data contract, bit-exact baseline regen). Scorer reproduces public board. data/README.md note was stale |
 | 1 | todo | |
 | 2 | todo | |
 | 3 | todo | |
