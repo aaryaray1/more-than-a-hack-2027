@@ -20,6 +20,9 @@ Status values: `idea` → `spike` (≤ 2 h feasibility check) → `building` →
 | BAR-ATH label-free checks | possession count, mean duration, D share, spells < 2 s, D→alive agreement with set-piece tags. These catch domain gap. They are not a score. |
 | public 5 min | run **once per accepted version**, written in its own column, **never** used to decide. Measured noise band there: **±0.33** |
 | hygiene | one change per experiment; seeds fixed; log the git hash |
+| harness-blind fixes (added 11-09, before any such result) | a fix for something the harness cannot show (e.g. pre-kickoff stretch): accept if harness Δ ≥ −0.005 and the specific BAR-ATH label-free check improves |
+| tuned settings | evaluate on seeds the sweep did not use (`--first-seed 1`) |
+| **proposed, team to decide** | setting-only changes: accept at Δ ≥ +0.01 if the CI excludes 0 on **both** label variants (would accept v1m, exp 013) |
 
 Why paired deltas: the full-match noise band on absolute spellF1 is ~0.04. A paired Δ on the same games is
 tighter, so it is the number that can actually move a decision.
@@ -199,6 +202,11 @@ Priority: **P0** = on the critical path to a good submission · **P1** = big exp
 | 2026-11-09 | 009 | E8 | v1 trained on calibrated+looser mix | 0.5896 (s0) | −0.008 calibrated, **+0.064 looser** | 0.8678 | — | — | — | **accepted as training protocol** (hedge) |
 | 2026-11-09 | 010 | D5 | v1t: sweep-tuned decoder (penalty 64, min_frames 1) | 0.5999 | +0.0083 [−0.003, +0.019] vs v1, 5/8 | 0.8664 | — | 313 / 11.4 s / 43.9% | — | **parked**: below the +0.02 bar. min_s = 2.0 kept per CHALLENGE.md (raw labels prefer 1.0; definitional risk K2) |
 
+| 2026-11-09 | 011 | — | error breakdown `validation/errors.py` (v1): possessions < 3 s matched 20%, 3–6 s 37%, > 12 s 83–90%; ball visible < 25% of the spell: 12%. Missed short visible spells: 57% no switch predicted (a pressing opponent within 1 m cancels the new team's control), 42% merged with neighbours | — | — | — | — | — | — | drives P2/D3 |
+| 2026-11-09 | 012 | D3 | **v2**: learned team model (HistGB on control-timing + co-movement + distance features, home/away swap augmentation) + team Viterbi | 0.6085 | +0.017 [+0.004, +0.029] control, −0.003 raw | 0.8768 | — | 277 / 12.9 s / 43.9% | — | **parked**: below the bar, does not help raw |
+| 2026-11-09 | 013 | P1 | **v1m**: contested margin 0.3 m + penalty 64 + 1-frame control; held-out seeds 1–2 | 0.6064 | +0.014 [+0.004, +0.024] control, **+0.022 [+0.014, +0.030] raw** | 0.8712 | — | 309 / 11.6 s / 43.6% | — | **parked** under the current rule (see the proposed amendment in §1) |
+| 2026-11-09 | 014 | S4 K5 | **v1k**: own-half-formation episodes → D (0 of 13 episodes on the harness were live play), and D from half start to the half's `Kick Off (Start)` tag | 0.5924 | ±0.0000 (no harm) | 0.8702 | — | 334 / 10.3 s / 45.7% | — | **accepted, current best**: pre-kickoff stretch 39% → 97% D, 9 invented possessions removed |
+
 **Harness check (001–004):** the harness ranks the baselines raw < 25 < 125 < 50, exactly like the official full match (0.049 / 0.200 / 0.224 / 0.243). The public window ranks 125 first. Harness spellF1 reads ~0.04 high in absolute terms, so compare deltas, not levels. Run-to-run spread for one pipeline is ±0.03, so trust the paired Δ CI, not one run.
 
 ## 6. Parked / rejected (keep the reason)
@@ -227,11 +235,12 @@ Priority: **P0** = on the critical path to a good submission · **P1** = big exp
 
 ## 7. Next up (in order)
 
-Honest current estimate for v1 on the real leaderboard: **~0.45–0.55 spellF1, wide uncertainty** (harness 0.55–0.60 between the plausible degrader settings, minus the ~0.07 harness optimism seen on baseline50). The floor is 0.2433.
+Current best: **v1k**. Honest estimate on the real leaderboard: **~0.45–0.55 spellF1, wide uncertainty** (floor 0.2433).
 
-1. Commit the 11-09 afternoon work (degrader v2, features, decoder, models, audit, sweep, tests, INNOVATION.md).
-2. Degrader v3: fit the ball-found timing (ours re-finds the ball **at** the restart; the simulator ~3 s after). Rerun the E6 audit.
-3. Team side (biggest remaining loss: team acc 0.81–0.88; possessions under-counted ~15%): P3 team-shape model for switches inside gaps, P5 restart team.
-4. S4 kickoff / K5: check the D share right after each half start on BAR-ATH (label-free).
-5. R1/R2 reproducible writer + pinned deps; first internal BAR-ATH file (not submitted until the team has reviewed it).
-6. GPU teammate: B1-spike (ball re-detection) and B2 sizing (broadcast fusion).
+1. Commit (waiting for the team's go-ahead).
+2. Team decision on the §1 amendment for setting-only changes. If yes, re-test v1m + v1k together on fresh seeds (3–4).
+3. **D7 stability**: BAR-ATH output moves with the training seeds (327 vs 345 possessions). Average dead/team probabilities over models trained on several degrade seeds.
+4. Short possessions (45% of all, matched 20–37%): better control evidence (ball-player co-movement, pass detection P2) or CV ball recovery (B1). This is the biggest remaining loss.
+5. Degrader v3: ball re-found **at** the restart (ours) rather than ~3 s after (simulator).
+6. R1/R2 reproducible writer + pinned deps; internal BAR-ATH file for the team to review (not submitted).
+7. GPU teammate: B1-spike (ball re-detection), B2 sizing (broadcast fusion).

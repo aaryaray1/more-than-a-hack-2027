@@ -129,3 +129,61 @@ def frame_features(match):
     }
     names = list(columns)
     return np.column_stack([columns[n] for n in names]).astype(np.float32), names
+
+
+def nearest_slot(match, team):
+    diff = match.xy - match.ball[:, None, :]
+    dist = np.hypot(diff[..., 0], diff[..., 1])
+    dist = np.where((match.team[None, :] == team) & ~np.isnan(dist), dist, np.inf)
+    slot = np.argmin(dist, axis=1)
+    return slot, np.isfinite(dist[np.arange(len(slot)), slot])
+
+
+def time_since(mask, cap=TIME_CAP):
+    idx = np.where(mask, np.arange(len(mask)), -10 ** 9)
+    return np.minimum(np.arange(len(mask)) - np.maximum.accumulate(idx), cap).astype(float)
+
+
+def time_until(mask, cap=TIME_CAP):
+    return time_since(mask[::-1], cap)[::-1]
+
+
+def team_features(match, radius=1.0, margin=0.3):
+    home_d, away_d = nearest_distances(match)
+    ball_v = np.vstack(([np.nan, np.nan], np.diff(match.ball, axis=0))) * match.fps
+    player_v = np.concatenate((np.full((1,) + match.xy.shape[1:], np.nan),
+                               np.diff(match.xy, axis=0))) * match.fps
+    cols = {}
+    for name, team, own, opp in (("h", 0, home_d, away_d), ("a", 1, away_d, home_d)):
+        slot, ok = nearest_slot(match, team)
+        rel = ball_v - player_v[np.arange(match.n_frames), slot]
+        co = np.where(ok, np.hypot(rel[:, 0], rel[:, 1]), np.nan)
+        ctrl = np.nan_to_num(own, nan=np.inf) < radius
+        ctrl &= (np.nan_to_num(opp, nan=np.inf) - np.nan_to_num(own, nan=np.inf)) > margin
+        cols[name + "_d"] = own
+        cols[name + "_co"] = centred_mean(co, 3)
+        cols[name + "_since"] = time_since(ctrl)
+        cols[name + "_until"] = time_until(ctrl)
+        cols[name + "_ctrl25"] = centred_mean(ctrl.astype(float), 25)
+    diff = home_d - away_d
+    cols["diff"] = diff
+    cols["diff12"] = centred_mean(diff, 12)
+    cols["diff50"] = centred_mean(diff, 50)
+    names = sorted(cols)
+    return np.column_stack([cols[n] for n in names]).astype(np.float32), names
+
+
+def swap_teams(x, names):
+    index = {n: i for i, n in enumerate(names)}
+    order = []
+    for n in names:
+        if n.startswith("h_"):
+            order.append(index["a_" + n[2:]])
+        elif n.startswith("a_"):
+            order.append(index["h_" + n[2:]])
+        else:
+            order.append(index[n])
+    out = x[:, order].copy()
+    for n in ("diff", "diff12", "diff50"):
+        out[:, index[n]] = -out[:, index[n]]
+    return out

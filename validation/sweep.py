@@ -13,11 +13,19 @@ from solution import models  # noqa: E402
 from validation import harness  # noqa: E402
 
 GRID = {
-    "penalty": [32.0, 64.0, 128.0, 256.0],
-    "radius": [0.5, 0.75, 1.0],
-    "min_frames": [1, 2],
+    "penalty": [8.0, 64.0],
+    "radius": [1.0, 1.5],
+    "min_frames": [1, 3],
+    "min_s": [2.0],
+    "gap_switch": ["mid"],
+    "margin": [0.0, 0.3, 0.6, 1.0, 1.5, 2.5],
+}
+
+
+TEAM_GRID = {
+    "penalty": [32.0, 64.0],
+    "team_penalty": [2.0, 4.0, 8.0, 16.0, 32.0],
     "min_s": [1.0, 1.5, 2.0, 2.5],
-    "gap_switch": ["end", "mid"],
 }
 
 
@@ -25,28 +33,34 @@ def main():
     parser = argparse.ArgumentParser(description="Sweep DeadAliveTeam decode settings, LOGO")
     parser.add_argument("--seeds", type=int, default=1)
     parser.add_argument("--top", type=int, default=12)
+    parser.add_argument("--team", action="store_true", help="sweep the learned team model (v2)")
     args = parser.parse_args()
+    grid = TEAM_GRID if args.team else GRID
+    cls = models.LearnedTeam if args.team else models.DeadAliveTeam
 
     seeds = tuple(range(args.seeds))
     train = harness.mixed_runs(seeds)
     runs = harness.mixed_runs(seeds)
     games = sorted({g for g, _, _ in runs})
-    p_dead = {}
+    p_dead, p_home = {}, {}
     for game in games:
-        model = models.DeadAliveTeam().fit([(m, t["control"]) for g, m, t in train if g != game])
+        model = cls().fit([(m, t["control"]) for g, m, t in train if g != game])
         for g, m, _ in runs:
             if g == game:
                 p_dead[m.name] = model.dead_probability(m)
+                if args.team:
+                    p_home[m.name] = model.home_probability(m)
 
-    keys = list(GRID)
+    keys = list(grid)
     results = []
-    for values in itertools.product(*(GRID[k] for k in keys)):
+    for values in itertools.product(*(grid[k] for k in keys)):
         params = dict(zip(keys, values))
-        model = models.DeadAliveTeam(**params)
+        model = cls(**params)
         scores = {"control": [], "raw": []}
         per_game = {g: [] for g in games}
         for g, m, truth in runs:
-            pred = model.predict(m, p_dead[m.name])
+            pred = (model.predict(m, p_dead[m.name], p_home[m.name]) if args.team
+                    else model.predict(m, p_dead[m.name]))
             for variant in scores:
                 s = pm.spell_scores(truth[variant], pred, pm.valid_runs(truth[variant]))["mean_f1"]
                 scores[variant].append(s)
@@ -61,7 +75,7 @@ def main():
     for control, raw, worst, params in results[:args.top]:
         print("{:>8.4f} {:>8.4f} {:>9.4f}  {}".format(control, raw, worst, params))
     default = [r for r in results if r[3] == {"penalty": 8.0, "radius": 1.0, "min_frames": 3,
-                                              "min_s": 2.0, "gap_switch": "mid"}]
+                                              "min_s": 2.0, "gap_switch": "mid", "margin": 0.0}]
     if default:
         print("default  {:.4f} {:.4f} {:.4f}".format(*default[0][:3]))
     for column, label in ((0, "control"), (1, "raw")):

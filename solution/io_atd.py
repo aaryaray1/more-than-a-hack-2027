@@ -41,7 +41,7 @@ def parse_raw(raw_path, n_slots, n_frames, length, width):
 def load(source="tactical", game=GAME, refresh=False):
     cache = os.path.join(CACHE_DIR, "{}_{}.npz".format(game, source))
     if os.path.isfile(cache) and not refresh:
-        return Match.load(cache)
+        return with_tags(Match.load(cache), game, source)
     meta_path, raw_path = require(["atd_meta", "atd_raw"], game, source=source)
     length, width = GAMES[game]["pitch"]
     team = slot_teams(meta_path)
@@ -50,6 +50,13 @@ def load(source="tactical", game=GAME, refresh=False):
     match = Match(name="{}_{}".format(game, source), fps=GAMES[game]["fps"], length=length,
                   width=width, xy=xy, team=team, ball=ball, halves=halves)
     match.save(cache)
+    return with_tags(match, game, source)
+
+
+def with_tags(match, game, source):
+    if source == "tactical":
+        from solution.tagging import kickoff_start_frames
+        match.meta["kickoff_tags"] = {str(k): v for k, v in kickoff_start_frames(game).items()}
     return match
 
 

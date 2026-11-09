@@ -189,6 +189,8 @@ def main():
     parser.add_argument("pipeline", choices=registry.names())
     parser.add_argument("--vs", choices=registry.names())
     parser.add_argument("--seeds", type=int, default=len(SEEDS))
+    parser.add_argument("--first-seed", type=int, default=0,
+                        help="use seeds first..first+n-1 (e.g. 1 to avoid the seed a sweep tuned on)")
     parser.add_argument("--draws", type=int, default=1000)
     parser.add_argument("--shift", metavar="K=V,...",
                         help="degrade the test games with other BallLoss values (train stays default)")
@@ -197,7 +199,7 @@ def main():
     parser.add_argument("--log", metavar="NOTE", help="append the result to planning/experiments.csv")
     args = parser.parse_args()
 
-    seeds = tuple(range(args.seeds))
+    seeds = tuple(range(args.first_seed, args.first_seed + args.seeds))
     runs = mixed_runs(seeds) if args.train_mix else harness_runs(seeds)
     ball_loss, tag = parse_shift(args.shift)
     test_runs = harness_runs(seeds, ball_loss, tag) if (args.shift or args.train_mix) else runs

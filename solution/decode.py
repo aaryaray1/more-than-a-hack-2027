@@ -101,3 +101,22 @@ def fill_unknown(codes, halves):
         carry[carry < 0] = known[0]
         window[window == UNKNOWN] = window[carry][window == UNKNOWN]
     return out
+
+
+def own_half_episodes(split, n_seen, lo, hi, threshold=0.9, min_frames=50, min_players=16):
+    mask = (split[lo:hi] >= threshold) & (n_seen[lo:hi] >= min_players)
+    edges = np.diff(np.concatenate(([0], mask.astype(np.int8), [0])))
+    return [(lo + a, lo + b) for a, b in zip(np.flatnonzero(edges == 1), np.flatnonzero(edges == -1))
+            if b - a >= min_frames]
+
+
+def kickoff_dead(split, n_seen, halves, n_frames, fps, kickoff_tags=None, search_s=300):
+    dead = np.zeros(n_frames, bool)
+    for index, (start, stop) in enumerate(halves, 1):
+        for a, b in own_half_episodes(split, n_seen, start, stop):
+            dead[a:b] = True
+        tagged = [f for f in (kickoff_tags or {}).get(str(index), [])
+                  if start < f <= min(stop, start + search_s * fps)]
+        if tagged:
+            dead[start:tagged[0]] = True
+    return dead
