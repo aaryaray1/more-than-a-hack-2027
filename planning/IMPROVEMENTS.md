@@ -3,6 +3,8 @@
 This file tracks every idea for raising **spellF1**. Started 2026-11-09. Update it after every experiment,
 including the ones that fail. `PLAN.md` holds phases and dates. This file holds the levers and the evidence for each.
 
+Innovation Challenge planning: `planning/INNOVATION.md`. Risks and confidence: §8.
+
 Status values: `idea` → `spike` (≤ 2 h feasibility check) → `building` → `testing` → `accepted` / `rejected` / `parked`.
 
 ---
@@ -26,9 +28,11 @@ tighter, so it is the number that can actually move a decision.
 
 ## 2. Current best
 
+BAR-ATH label-free numbers are over the two halves only. The validator counts the whole file, which gives 669 / 7.6 s.
+
 | version | date | harness spellF1 | BAR-ATH poss / mean dur | public (sanity only) | full match (published) |
 |---|---|---|---|---|---|
-| `baseline_smooth50` | given | — (harness not built) | 669 / 7.6 s | 0.3256 | **0.2433** ← the floor |
+| `baseline50` (= `baseline_smooth50`) | 2026-11-09 | **0.2925** (raw labels 0.2504) | 594 / 7.2 s / D 32.3% | 0.3256 | **0.2433** ← the floor |
 
 ---
 
@@ -55,6 +59,16 @@ Script: one streaming pass over the tactical ATD, graded frames only, printing a
 | nearest player to ball | p50 1.9 m; ≤ 1.5 m on 41.8%; both teams ≤ 3 m on 13.9% | contested frames ~14%: the hysteresis zone |
 | baseline_smooth50 | 669 possessions, mean 7.6 s | over-fragmented (football runs ~3–4 possessions/min including stoppage splits; take the target from the harness, not the public window) |
 
+### 3b. More ATD aggregates (added 2026-11-09, used as degrader targets)
+
+| fact | number | use |
+|---|---|---|
+| ball visible **outside** the lines | 4.2% of visible graded frames | degrader target. Our tracker mostly loses the ball once it goes out |
+| nearest player when the ball is lost | median **1.45 m** | the ball is lost through occlusion → degrader covariate |
+| a team shows > 11 objects | 8.1% (home) / 4.7% (away) of frames | duplicates / ghosts. **No referee slots** (that would be ~100%) |
+| < 18 objects | 9.2% of frames | correlated dropout bursts |
+| teammates < 1 m apart | 6.7% of frames | normal football (clean IDSSE: 6–8%), not duplication |
+
 **Headline:** the problem is mostly about 150 ball gaps. Each one has to be labelled dead, H-live or A-live,
 and the turnovers inside it have to be found. Ball re-detection (B1/B2) and gap-context dead-ball detection (S1)
 move up. Interpolation moves out.
@@ -72,11 +86,14 @@ Priority: **P0** = on the critical path to a good submission · **P1** = big exp
 
 | ID | lever | why / evidence | cost | needs | measured by | pri | status |
 |---|---|---|---|---|---|---|---|
-| E0 | test suite `solution/tests` (25 tests: metric contract, data contract, bit-exact baseline regen) | locks in the spellF1 facts the design relies on | done | — | `cd solution && ../.venv/Scripts/python -m pytest` | P0 | **accepted** |
-| E1 | other-game harness. Candidates: DFL/IDSSE open data (7 matches, 25 Hz, per-frame BallStatus + BallPossession, so labels have the same mechanical form as our GT; kloppy `sportec`), Metrica sample game 3 (same EPTS format; labels from events), SkillCorner open data (possession group, 10 Hz), PFF WC22 (registration) | the only legal tuning signal | M | — | spellF1 of the baseline reproduced per game | P0 | spike: figshare (kloppy's default URL) blocks scripts with a WAF challenge, then 403. **Use the Hugging Face mirror `pysport/idsse-data`** (21 files, 2.63 GB, scriptable) → `validation/cache/idsse/` (gitignored). Load with `sportec.load_tracking(..., only_alive=False)`. Default `only_alive=True` throws away every dead frame. BallStatus/owner fields not yet confirmed on a full file |
-| E2 | degradation to look like our ATD: drop the ball in **long blocks** fitted to §3 (150 gaps, p50 268 f, p90 845 f, more likely near lines and in stoppages), player dropout/fragmentation (20.5 obj/frame, tracklet p50 886 f), 2.4% duplicates, speed field removed | without it the harness rewards ball-dependent methods that fail here | M | E1 | degraded harness stats match §3 within ±20% | P0 | idea |
-| E3 | `harness.py`: official scorer per game + game-clustered bootstrap of Δ + appends a row to §5 | makes §1 mechanical | S | E1 | — | P0 | idea |
-| E4 | `diagnostics.py`: BAR-ATH label-free checks from §1 | catches harness/match domain gap | S | — | — | P0 | idea |
+| E0 | test suite `solution/tests` (32 tests: metric contract, data contract, bit-exact baseline regen, ported baseline = official files, control labels, IDSSE shapes, degrader determinism) | locks in the spellF1 facts the design relies on | done | — | `cd solution && ../.venv/Scripts/python -m pytest` | P0 | **accepted** |
+| E1 | other-game harness: IDSSE J03WMX (Köln–Bayern) + J03WPY (Düsseldorf–Nürnberg) from the HF mirror → `validation/idsse.py` (referees dropped). Per-frame BallStatus + BallPossession confirmed. Labels: **control** (primary: a switch needs ≥ 2 s, CHALLENGE.md's "keeps the ball for a few seconds"; shorter flips stay with the last team; `validation/labels.py`) and **raw** DFL (secondary) | the only legal tuning signal. Raw DFL flips on any touch: 37% of spells < 2 s | done | — | baseline ranking matches the official full match (§5) | P0 | **accepted** |
+| E2 | `validation/degrade.py` **v2** (11-09): ball lost/found by a hazard process (more loss when dead, airborne, near a line, or a player within 1 m = occlusion), fitted by `calibrate_degrade.py` on 4 games to 7 ATD aggregates; **dead-ball positions unfrozen** (IDSSE freezes the ball on 100% of dead frames; ours moves); players cut into tracklets reusing 23 slots/team, correlated dropout bursts and duplicates matched to ATD object counts (§3b) | without it the harness rewards ball-dependent methods | done | E1 | `validation/audit.py` feature KS vs BAR-ATH | P0 | **accepted v2**; v1 results are superseded |
+| E3 | `validation/harness.py <pipeline> [--vs other] [--log NOTE]`: 2 games × 3 degrade seeds, official scorer, paired possession bootstrap of Δ (90% CI), BAR-ATH label-free line, appends to `planning/experiments.csv` | makes §1 mechanical | done | E1 E2 | — | P0 | **accepted** |
+| E4 | BAR-ATH label-free checks: possessions, per min, mean length, D share, spells < 2 s (in `harness.py`). Still to add: D→alive agreement with set-piece tags | catches harness/match domain gap | S | — | — | P0 | **partly done** |
+| E5 | **shift tests** `harness.py --shift k=v`: train on the default degrader, test on games degraded differently | a gain that only exists under one simulator is a simulator artefact | done | E3 | Δ must stay positive under every shift | P0 | **accepted** (rule) |
+| E6 | **feature audit** `validation/audit.py`: KS + quantiles of every model feature, harness vs BAR-ATH (aggregates) | finds leaks and domain gaps systematically. First run found: occlusion-driven loss missing, visible-outside too common, player count off → fixed / feature dropped | done | E2 | max KS after fixes | P0 | **accepted** (run after every degrader or feature change) |
+| E7 | more harness games: J03WN1 (Bochum–Leverkusen), J03WOH (Düsseldorf–Regensburg) → 4 games | 2 games = tuning to two quirks | done | E1 | — | P0 | **accepted** |
 
 ### S: alive/dead segmentation
 
@@ -167,8 +184,22 @@ Priority: **P0** = on the critical path to a good submission · **P1** = big exp
 | date | exp | IDs | change | harness spellF1 [90% CI] | Δ vs best | macroF1 | poss err | BAR-ATH poss / dur / D% | public (sanity) | decision |
 |---|---|---|---|---|---|---|---|---|---|---|
 | 2026-11-09 | 000 | E0 | test suite + env (`.venv`) | — | — | — | — | 669 / 7.6 s / 35.9% (baseline_smooth50) | 0.3256 [±0.33] | accepted (infra) |
+| 2026-11-09 | 001 | E1–E3 | baseline_raw on harness | 0.0504 | — | 0.6271 | +1281 | 1949 / 1.9 s / 40.7% | 0.0378 | starting point |
+| 2026-11-09 | 002 | E1–E3 | baseline25 on harness | 0.2306 | — | 0.6659 | +296 | 746 / 5.4 s / 36.5% | 0.2868 | starting point |
+| 2026-11-09 | 003 | E1–E3 | **baseline50** on harness | **0.2925** | — | 0.6809 | +183 | 594 / 7.2 s / 32.3% | 0.3256 | **current best** |
+| 2026-11-09 | 004 | E1–E3 | baseline125 on harness | 0.2814 | — | 0.6688 | +62 | 398 / 12.4 s / 22.3% | 0.4242 | starting point |
 
 ---
+
+| 2026-11-09 | 005 | P1 S1 D1 T- | **v1** = learned dead/live (HistGB on 26 features, LOGO) + Viterbi + last-controller team track + 2 s absorb | 0.5651 | +0.2726 [+0.257, +0.290] | 0.8604 | −63 | 328 / 12.4 s / 35.7% | — | **superseded**: measured on degrader v1, which leaked the dead ball (frozen IDSSE ball). Re-measure on v2 |
+
+| 2026-11-09 | 006 | E2 v2 | baseline50, degrader v2, 4 games × 2 seeds | 0.3137 | — | 0.7549 | +~210 | 594 / 7.2 s / 32.3% | — | reference for v2 |
+| 2026-11-09 | 007 | P1 S1 D1 | **v1** on degrader v2 (leak fixed, 4 games × 2 seeds) | **0.6018** | **+0.2881 [+0.274, +0.303]**, 8/8 | 0.8698 | −50 | 327 / 11.5 s / 40.9% | — | **accepted, current best** |
+| 2026-11-09 | 008 | E5 | v1 shift tests: looser coupling 0.551 (+0.28); uniform loss 0.260 (+0.16) | — | beats baseline under every shift | — | — | — | — | speed profiles around loss/found put BAR-ATH between calibrated and looser, not uniform |
+| 2026-11-09 | 009 | E8 | v1 trained on calibrated+looser mix | 0.5896 (s0) | −0.008 calibrated, **+0.064 looser** | 0.8678 | — | — | — | **accepted as training protocol** (hedge) |
+| 2026-11-09 | 010 | D5 | v1t: sweep-tuned decoder (penalty 64, min_frames 1) | 0.5999 | +0.0083 [−0.003, +0.019] vs v1, 5/8 | 0.8664 | — | 313 / 11.4 s / 43.9% | — | **parked**: below the +0.02 bar. min_s = 2.0 kept per CHALLENGE.md (raw labels prefer 1.0; definitional risk K2) |
+
+**Harness check (001–004):** the harness ranks the baselines raw < 25 < 125 < 50, exactly like the official full match (0.049 / 0.200 / 0.224 / 0.243). The public window ranks 125 first. Harness spellF1 reads ~0.04 high in absolute terms, so compare deltas, not levels. Run-to-run spread for one pipeline is ±0.03, so trust the paired Δ CI, not one run.
 
 ## 6. Parked / rejected (keep the reason)
 
@@ -180,10 +211,27 @@ Priority: **P0** = on the critical path to a good submission · **P1** = big exp
 
 ---
 
+## 8. Confidence and risk register (read before believing any number)
+
+| # | risk | what it would do | evidence so far | mitigation | status |
+|---|---|---|---|---|---|
+| K1 | **simulator leaks**: the harness is easier than our match | gains that vanish on BAR-ATH | **found one** (11-09): IDSSE freezes the ball on 100% of dead frames (ours 0.1%), so "ball not moving" gave the dead ball away. Feature audit then found 3 more gaps (occlusion, ball outside, player count) | unfreeze dead ball; E6 audit after every change; E5 shift tests | mitigated, keep auditing |
+| K2 | **label definition gap** (DFL vs Metrica) | tuned to the wrong notion of possession | DFL flips on touches (37% of spells < 2 s); dead share 42–52% | primary = control labels (CHALLENGE.md rule), secondary = raw; a change must help both | mitigated |
+| K3 | **few games** | tuning to quirks | 4 games since 11-09 (2 first-division, 2 second-division) | LOGO; add the other 3 IDSSE games if deltas sit near +0.02 | mitigated |
+| K4 | **degrader realism** | wrong difficulty on the harness | 7 ball stats + 4 object-count stats fitted to ours (§3, §3b) | refit when the audit shows KS > 0.15 on a model feature | ongoing |
+| K5 | **events the harness never shows** | systematic errors on BAR-ATH only | 2nd-half pre-kickoff stretch (2,934 graded D frames), goals, VAR, injuries, halftime edges; IDSSE halves start at kickoff | S4 kickoff detector; label-free checks of D share right after each half start | todo |
+| K6 | **public-window temptation** | choosing by 17 possessions (±0.33) | — | run once per accepted version, logged, never decides | rule |
+| K7 | **reproducibility** | disqualification | — | R1/R2, 2-run hash check before freeze | todo |
+| K8 | **top 20 not secured** | the Innovation Challenge never happens | other teams' scores unknown until Nov 26 | Phase 2 work stays cheap until then (INNOVATION.md §3) | rule |
+| K9 | **absolute harness level ≠ leaderboard level** | false comfort from a high harness number | baseline50: harness 0.29 vs official 0.24 | compare deltas only; expect BAR-ATH lower than the harness | rule |
+
 ## 7. Next up (in order)
 
-1. **E1 data in hand**: download the 7 IDSSE matches from the Hugging Face mirror into `validation/cache/idsse/`, then confirm per-frame `ball_state` / `ball_owning_team` with `only_alive=False`. Metrica sample game 3 (GitHub) is the fallback.
-2. Phase 1 `io_atd.py` cache + **phase 2 first submission** built from S2 + S4 + P1 + R1. Upload it early.
-3. **E2 + E3** harness with the long-gap degradation from §3.
-4. **S1 + D1 + T1** on the harness.
-5. In parallel, a teammate with the GPU runs the **B1-spike** (2 h) and the **B2 sizing** (1 h). Their numbers decide whether day 4–5 goes to B1, B2 or P3.
+Honest current estimate for v1 on the real leaderboard: **~0.45–0.55 spellF1, wide uncertainty** (harness 0.55–0.60 between the plausible degrader settings, minus the ~0.07 harness optimism seen on baseline50). The floor is 0.2433.
+
+1. Commit the 11-09 afternoon work (degrader v2, features, decoder, models, audit, sweep, tests, INNOVATION.md).
+2. Degrader v3: fit the ball-found timing (ours re-finds the ball **at** the restart; the simulator ~3 s after). Rerun the E6 audit.
+3. Team side (biggest remaining loss: team acc 0.81–0.88; possessions under-counted ~15%): P3 team-shape model for switches inside gaps, P5 restart team.
+4. S4 kickoff / K5: check the D share right after each half start on BAR-ATH (label-free).
+5. R1/R2 reproducible writer + pinned deps; first internal BAR-ATH file (not submitted until the team has reviewed it).
+6. GPU teammate: B1-spike (ball re-detection) and B2 sizing (broadcast fusion).

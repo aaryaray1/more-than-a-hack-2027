@@ -1,0 +1,9 @@
+date,version,pipeline,versus,spellF1_control,spellF1_raw,macroF1,delta_control,delta_control_ci,delta_raw,per_run_control,bar_poss,bar_mean_s,bar_d_share,note
+2026-11-09,302cccf+dirty,baseline_raw,,0.0504,0.0840,0.6271,,,,0.048 0.052 0.046 0.053 0.049 0.055,1949,1.9,0.407,starting point: official baseline ported
+2026-11-09,302cccf+dirty,baseline25,,0.2306,0.2276,0.6659,,,,0.217 0.266 0.243 0.235 0.221 0.203,746,5.4,0.365,starting point: official baseline ported
+2026-11-09,302cccf+dirty,baseline50,,0.2925,0.2504,0.6809,,,,0.298 0.316 0.315 0.293 0.272 0.261,594,7.2,0.323,starting point: official baseline ported
+2026-11-09,302cccf+dirty,baseline125,,0.2814,0.2074,0.6688,,,,0.279 0.285 0.262 0.303 0.289 0.271,398,12.4,0.223,starting point: official baseline ported
+2026-11-09,932b6d0+dirty,baseline50,,0.3137,0.2745,0.7549,,,,0.312 0.350 0.335 0.291 0.305 0.321 0.295 0.301,594,7.2,0.323,"degrader v2, 4 games x 2 seeds"
+2026-11-09,932b6d0+dirty,v1,baseline50,0.6018,0.4537,0.8698,+0.2881,"[+0.2741,+0.3027]",+0.1792,0.625 0.657 0.537 0.542 0.619 0.592 0.611 0.632,327,11.5,0.409,"degrader v2, 4 games x 2 seeds"
+2026-11-09,932b6d0+dirty,v1,baseline50,0.5896,0.4483,0.8678,+0.2779,"[+0.2604,+0.2966]",+0.1726,0.616 0.522 0.623 0.598,341,10.4,0.444,"train-mix (calibrated+looser), test calibrated, seed 0"
+2026-11-09,932b6d0+dirty,v1t,v1,0.5999,0.4600,0.8664,+0.0083,"[-0.0028,+0.0189]",+0.0120,0.627 0.664 0.581 0.550 0.568 0.571 0.619 0.619,313,11.4,0.439,"decoder tuned by sweep (penalty 64, min_frames 1); train-mix"
