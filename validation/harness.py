@@ -4,6 +4,7 @@ import datetime
 import os
 import subprocess
 import sys
+from dataclasses import replace
 
 import numpy as np
 
@@ -11,7 +12,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "evaluation"))
 import possession_metrics as pm  # noqa: E402
-from solution import io_atd, pipelines  # noqa: E402
+from solution import io_atd, registry  # noqa: E402
 from validation import degrade, idsse, labels  # noqa: E402
 
 LOG_PATH = os.path.join(ROOT, "planning", "experiments.csv")
@@ -19,12 +20,52 @@ SEEDS = (0, 1, 2)
 VARIANTS = ("control", "raw")
 
 
-def harness_runs(seeds=SEEDS):
+def harness_runs(seeds=SEEDS, ball_loss=degrade.BallLoss(), tag=""):
+    runs = []
     for match_id in idsse.available():
         clean = idsse.load(match_id)
         truth = {"raw": clean.labels, "control": labels.controlled(clean.labels, clean.fps)}
         for seed in seeds:
-            yield degrade.degrade(clean, seed), truth
+            run = degrade.degrade(clean, seed, ball_loss=ball_loss)
+            runs.append((match_id, replace(run, name=run.name + tag), truth))
+    return runs
+
+
+TRAIN_MIX = ("", "a_dead=1.0,b_dead=-1.0")
+
+
+def mixed_runs(seeds, shifts=TRAIN_MIX):
+    runs = []
+    for text in shifts:
+        ball_loss, tag = parse_shift(text)
+        runs += harness_runs(seeds, ball_loss, tag)
+    return runs
+
+
+def parse_shift(text):
+    if not text:
+        return degrade.BallLoss(), ""
+    values = dict(item.split("=") for item in text.split(","))
+    return replace(degrade.BallLoss(), **{k: float(v) for k, v in values.items()}), "~" + text
+
+
+def predict_runs(name, runs, train_runs=None):
+    if not registry.is_learned(name):
+        return [registry.predict(name, match) for _, match, _ in runs]
+    train_runs = train_runs if train_runs is not None else runs
+    out = [None] * len(runs)
+    for game in sorted({g for g, _, _ in runs}):
+        model = registry.make(name).fit([(m, t["control"]) for g, m, t in train_runs if g != game])
+        for i, (g, match, _) in enumerate(runs):
+            if g == game:
+                out[i] = model.predict(match)
+    return out
+
+
+def predict_bar(name, runs, bar_match):
+    if not registry.is_learned(name):
+        return registry.predict(name, bar_match)
+    return registry.make(name).fit([(m, t["control"]) for _, m, t in runs]).predict(bar_match)
 
 
 def spell_flags(gt, pred):
@@ -78,11 +119,12 @@ def git_version():
         return "unknown"
 
 
-def evaluate(name, versus=None, seeds=SEEDS, n_draws=1000):
+def evaluate(name, versus=None, seeds=SEEDS, n_draws=1000, runs=None, train_runs=None):
+    runs = runs if runs is not None else harness_runs(seeds)
+    preds = predict_runs(name, runs, train_runs)
+    others = predict_runs(versus, runs, train_runs) if versus else [None] * len(runs)
     rows, pairs = [], {v: [] for v in VARIANTS}
-    for match, truth in harness_runs(seeds):
-        pred = pipelines.run(name, match)
-        other = pipelines.run(versus, match) if versus else None
+    for (_, match, truth), pred, other in zip(runs, preds, others):
         row = {"run": match.name}
         for variant in VARIANTS:
             result = pm.evaluate(truth[variant], pred)
@@ -144,16 +186,25 @@ def log(name, versus, mean, rows, deltas, bar, note):
 
 def main():
     parser = argparse.ArgumentParser(description="Score a pipeline on the degraded IDSSE harness")
-    parser.add_argument("pipeline", choices=sorted(pipelines.PIPELINES))
-    parser.add_argument("--vs", choices=sorted(pipelines.PIPELINES))
+    parser.add_argument("pipeline", choices=registry.names())
+    parser.add_argument("--vs", choices=registry.names())
     parser.add_argument("--seeds", type=int, default=len(SEEDS))
     parser.add_argument("--draws", type=int, default=1000)
+    parser.add_argument("--shift", metavar="K=V,...",
+                        help="degrade the test games with other BallLoss values (train stays default)")
+    parser.add_argument("--train-mix", action="store_true",
+                        help="train learned pipelines on the default and the looser degrader")
     parser.add_argument("--log", metavar="NOTE", help="append the result to planning/experiments.csv")
     args = parser.parse_args()
 
-    rows, deltas = evaluate(args.pipeline, args.vs, tuple(range(args.seeds)), args.draws)
+    seeds = tuple(range(args.seeds))
+    runs = mixed_runs(seeds) if args.train_mix else harness_runs(seeds)
+    ball_loss, tag = parse_shift(args.shift)
+    test_runs = harness_runs(seeds, ball_loss, tag) if (args.shift or args.train_mix) else runs
+    rows, deltas = evaluate(args.pipeline, args.vs, n_draws=args.draws, runs=test_runs,
+                            train_runs=runs)
     bar_match = io_atd.load()
-    bar = label_free(pipelines.run(args.pipeline, bar_match), bar_match)
+    bar = label_free(predict_bar(args.pipeline, runs, bar_match), bar_match)
     mean = report(args.pipeline, rows, deltas, args.vs, bar)
     if args.log is not None:
         log(args.pipeline, args.vs, mean, rows, deltas, bar, args.log)

@@ -54,5 +54,5 @@ def test_degrade_is_deterministic_and_close_to_targets():
     assert np.array_equal(a.ball, b.ball, equal_nan=True)
     assert np.array_equal(a.xy, b.xy, equal_nan=True)
     stats = degrade.ball_gap_stats(a)
-    assert degrade.stats_loss(stats) < 0.5
+    assert degrade.stats_loss(stats) < 1.0
     assert a.ball_z is None

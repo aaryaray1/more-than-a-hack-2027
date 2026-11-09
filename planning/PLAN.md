@@ -179,7 +179,7 @@ Each phase = one focused Claude session. Start a session with: "read planning/PL
 | 1 | mostly done 11-09 | `solution/io_atd.py` → `data/cache/` npz (13 s parse, ~1 s load), `solution/match.py` common format. `tagging.py` still to do |
 | 2 | todo | |
 | 3 | done 11-09 | 2 IDSSE games × 3 degrade seeds; ranks baselines like the official full match. See IMPROVEMENTS.md E1–E3, exp 001–004 |
-| 4 | todo | |
+| 4 | in progress 11-09 | v1 (learned dead/live + Viterbi + last-controller team track) +0.29 over baseline on 4 games; leak found and fixed; mixed-degrader training; tuning parked (+0.008). See IMPROVEMENTS.md 005–010 |
 | 5 | todo | |
 | 6 | todo | |
 | 7 | todo | |
