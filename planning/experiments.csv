@@ -1,0 +1,5 @@
+date,version,pipeline,versus,spellF1_control,spellF1_raw,macroF1,delta_control,delta_control_ci,delta_raw,per_run_control,bar_poss,bar_mean_s,bar_d_share,note
+2026-11-09,302cccf+dirty,baseline_raw,,0.0504,0.0840,0.6271,,,,0.048 0.052 0.046 0.053 0.049 0.055,1949,1.9,0.407,starting point: official baseline ported
+2026-11-09,302cccf+dirty,baseline25,,0.2306,0.2276,0.6659,,,,0.217 0.266 0.243 0.235 0.221 0.203,746,5.4,0.365,starting point: official baseline ported
+2026-11-09,302cccf+dirty,baseline50,,0.2925,0.2504,0.6809,,,,0.298 0.316 0.315 0.293 0.272 0.261,594,7.2,0.323,starting point: official baseline ported
+2026-11-09,302cccf+dirty,baseline125,,0.2814,0.2074,0.6688,,,,0.279 0.285 0.262 0.303 0.289 0.271,398,12.4,0.223,starting point: official baseline ported

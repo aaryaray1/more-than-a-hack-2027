@@ -26,9 +26,11 @@ tighter, so it is the number that can actually move a decision.
 
 ## 2. Current best
 
+BAR-ATH label-free numbers are over the two halves only. The validator counts the whole file, which gives 669 / 7.6 s.
+
 | version | date | harness spellF1 | BAR-ATH poss / mean dur | public (sanity only) | full match (published) |
 |---|---|---|---|---|---|
-| `baseline_smooth50` | given | — (harness not built) | 669 / 7.6 s | 0.3256 | **0.2433** ← the floor |
+| `baseline50` (= `baseline_smooth50`) | 2026-11-09 | **0.2925** (raw labels 0.2504) | 594 / 7.2 s / D 32.3% | 0.3256 | **0.2433** ← the floor |
 
 ---
 
@@ -72,11 +74,11 @@ Priority: **P0** = on the critical path to a good submission · **P1** = big exp
 
 | ID | lever | why / evidence | cost | needs | measured by | pri | status |
 |---|---|---|---|---|---|---|---|
-| E0 | test suite `solution/tests` (25 tests: metric contract, data contract, bit-exact baseline regen) | locks in the spellF1 facts the design relies on | done | — | `cd solution && ../.venv/Scripts/python -m pytest` | P0 | **accepted** |
-| E1 | other-game harness. Candidates: DFL/IDSSE open data (7 matches, 25 Hz, per-frame BallStatus + BallPossession, so labels have the same mechanical form as our GT; kloppy `sportec`), Metrica sample game 3 (same EPTS format; labels from events), SkillCorner open data (possession group, 10 Hz), PFF WC22 (registration) | the only legal tuning signal | M | — | spellF1 of the baseline reproduced per game | P0 | spike: figshare (kloppy's default URL) blocks scripts with a WAF challenge, then 403. **Use the Hugging Face mirror `pysport/idsse-data`** (21 files, 2.63 GB, scriptable) → `validation/cache/idsse/` (gitignored). Load with `sportec.load_tracking(..., only_alive=False)`. Default `only_alive=True` throws away every dead frame. BallStatus/owner fields not yet confirmed on a full file |
-| E2 | degradation to look like our ATD: drop the ball in **long blocks** fitted to §3 (150 gaps, p50 268 f, p90 845 f, more likely near lines and in stoppages), player dropout/fragmentation (20.5 obj/frame, tracklet p50 886 f), 2.4% duplicates, speed field removed | without it the harness rewards ball-dependent methods that fail here | M | E1 | degraded harness stats match §3 within ±20% | P0 | idea |
-| E3 | `harness.py`: official scorer per game + game-clustered bootstrap of Δ + appends a row to §5 | makes §1 mechanical | S | E1 | — | P0 | idea |
-| E4 | `diagnostics.py`: BAR-ATH label-free checks from §1 | catches harness/match domain gap | S | — | — | P0 | idea |
+| E0 | test suite `solution/tests` (32 tests: metric contract, data contract, bit-exact baseline regen, ported baseline = official files, control labels, IDSSE shapes, degrader determinism) | locks in the spellF1 facts the design relies on | done | — | `cd solution && ../.venv/Scripts/python -m pytest` | P0 | **accepted** |
+| E1 | other-game harness: IDSSE J03WMX (Köln–Bayern) + J03WPY (Düsseldorf–Nürnberg) from the HF mirror → `validation/idsse.py` (referees dropped). Per-frame BallStatus + BallPossession confirmed. Labels: **control** (primary: a switch needs ≥ 2 s, CHALLENGE.md's "keeps the ball for a few seconds"; shorter flips stay with the last team; `validation/labels.py`) and **raw** DFL (secondary) | the only legal tuning signal. Raw DFL flips on any touch: 37% of spells < 2 s | done | — | baseline ranking matches the official full match (§5) | P0 | **accepted** |
+| E2 | `validation/degrade.py`: ball lost/found by a hazard process (more loss when dead / airborne), fitted by `calibrate_degrade.py` to §3 (loss 2.3 → 0.10); players cut into tracklets reusing 23 slots/team, absence bursts, 2.4% duplicates, per-tracklet offsets; no ball z, no speed field | without it the harness rewards ball-dependent methods | done | E1 | fit gaps: missing 46–49% (target 41), speed ratio 0.61–0.64 (0.54), line-end 34–38% (29): harness gaps are a little less dead-heavy than ours | P0 | **accepted v1**; refit if S1 turns out sensitive |
+| E3 | `validation/harness.py <pipeline> [--vs other] [--log NOTE]`: 2 games × 3 degrade seeds, official scorer, paired possession bootstrap of Δ (90% CI), BAR-ATH label-free line, appends to `planning/experiments.csv` | makes §1 mechanical | done | E1 E2 | — | P0 | **accepted** |
+| E4 | BAR-ATH label-free checks: possessions, per min, mean length, D share, spells < 2 s (in `harness.py`). Still to add: D→alive agreement with set-piece tags | catches harness/match domain gap | S | — | — | P0 | **partly done** |
 
 ### S: alive/dead segmentation
 
@@ -167,8 +169,14 @@ Priority: **P0** = on the critical path to a good submission · **P1** = big exp
 | date | exp | IDs | change | harness spellF1 [90% CI] | Δ vs best | macroF1 | poss err | BAR-ATH poss / dur / D% | public (sanity) | decision |
 |---|---|---|---|---|---|---|---|---|---|---|
 | 2026-11-09 | 000 | E0 | test suite + env (`.venv`) | — | — | — | — | 669 / 7.6 s / 35.9% (baseline_smooth50) | 0.3256 [±0.33] | accepted (infra) |
+| 2026-11-09 | 001 | E1–E3 | baseline_raw on harness | 0.0504 | — | 0.6271 | +1281 | 1949 / 1.9 s / 40.7% | 0.0378 | starting point |
+| 2026-11-09 | 002 | E1–E3 | baseline25 on harness | 0.2306 | — | 0.6659 | +296 | 746 / 5.4 s / 36.5% | 0.2868 | starting point |
+| 2026-11-09 | 003 | E1–E3 | **baseline50** on harness | **0.2925** | — | 0.6809 | +183 | 594 / 7.2 s / 32.3% | 0.3256 | **current best** |
+| 2026-11-09 | 004 | E1–E3 | baseline125 on harness | 0.2814 | — | 0.6688 | +62 | 398 / 12.4 s / 22.3% | 0.4242 | starting point |
 
 ---
+
+**Harness check (001–004):** the harness ranks the baselines raw < 25 < 125 < 50, exactly like the official full match (0.049 / 0.200 / 0.224 / 0.243). The public window ranks 125 first. Harness spellF1 reads ~0.04 high in absolute terms, so compare deltas, not levels. Run-to-run spread for one pipeline is ±0.03, so trust the paired Δ CI, not one run.
 
 ## 6. Parked / rejected (keep the reason)
 
@@ -182,8 +190,7 @@ Priority: **P0** = on the critical path to a good submission · **P1** = big exp
 
 ## 7. Next up (in order)
 
-1. **E1 data in hand**: download the 7 IDSSE matches from the Hugging Face mirror into `validation/cache/idsse/`, then confirm per-frame `ball_state` / `ball_owning_team` with `only_alive=False`. Metrica sample game 3 (GitHub) is the fallback.
-2. Phase 1 `io_atd.py` cache + **phase 2 first submission** built from S2 + S4 + P1 + R1. Upload it early.
-3. **E2 + E3** harness with the long-gap degradation from §3.
-4. **S1 + D1 + T1** on the harness.
-5. In parallel, a teammate with the GPU runs the **B1-spike** (2 h) and the **B2 sizing** (1 h). Their numbers decide whether day 4–5 goes to B1, B2 or P3.
+1. **Phase 2 v1 pipeline** on the harness, one lever at a time, each `--vs baseline50 --log`: P1 hysteresis control → S2 ball-out-of-lines D → S1 gap-context dead-ball rules → S4 kickoff. Then write the first BAR-ATH submission (R1 LF, R4 validator) and upload early.
+2. **D1 + T1** decoder and turnover snapping on the harness.
+3. In parallel, a teammate with the GPU runs the **B1-spike** (2 h) and the **B2 sizing** (1 h). Their numbers decide whether day 4–5 goes to B1, B2 or P3.
+4. Optional: 2 more IDSSE matches (J03WN1, J03WOH) if paired Δs keep landing near the +0.02 bar.

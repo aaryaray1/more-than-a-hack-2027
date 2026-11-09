@@ -176,9 +176,9 @@ Each phase = one focused Claude session. Start a session with: "read planning/PL
 | phase | state | notes |
 |---|---|---|
 | 0 | done 11-09 | `.venv` (py 3.10, numpy 2.2.6, pandas 2.3.3, kloppy 3.18.0, scipy, pytest); system python has no pandas. 25 tests in `solution/tests` pass (metric contract, data contract, bit-exact baseline regen). Scorer reproduces public board. data/README.md note was stale |
-| 1 | todo | |
+| 1 | mostly done 11-09 | `solution/io_atd.py` → `data/cache/` npz (13 s parse, ~1 s load), `solution/match.py` common format. `tagging.py` still to do |
 | 2 | todo | |
-| 3 | todo | |
+| 3 | done 11-09 | 2 IDSSE games × 3 degrade seeds; ranks baselines like the official full match. See IMPROVEMENTS.md E1–E3, exp 001–004 |
 | 4 | todo | |
 | 5 | todo | |
 | 6 | todo | |
