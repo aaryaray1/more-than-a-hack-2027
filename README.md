@@ -10,6 +10,21 @@ question to answer with it.
 
 ---
 
+## Our solution
+
+Everything below this section is the organisers' original README.
+
+```bash
+pip install -r requirements-solution.txt        # Python 3.10, CPU only
+python solution/run.py --name <team_name>       # writes evaluation/results/<team_name>.csv
+```
+
+Needs the match bundle in `data/` and the seven open IDSSE matches in `validation/cache/idsse/`.
+The method, the training data and the limitations are in
+[planning/TECHNICAL.md](planning/TECHNICAL.md).
+
+---
+
 ## The task
 
 **For every frame of the match, say who has the ball.**

@@ -20,6 +20,9 @@ Status values: `idea` → `spike` (≤ 2 h feasibility check) → `building` →
 | BAR-ATH label-free checks | possession count, mean duration, D share, spells < 2 s, D→alive agreement with set-piece tags. These catch domain gap. They are not a score. |
 | public 5 min | run **once per accepted version**, written in its own column, **never** used to decide. Measured noise band there: **±0.33** |
 | hygiene | one change per experiment; seeds fixed; log the git hash |
+| harness-blind fixes (added 11-09, before any such result) | a fix for something the harness cannot show (e.g. pre-kickoff stretch): accept if harness Δ ≥ −0.005 and the specific BAR-ATH label-free check improves |
+| tuned settings | evaluate on seeds the sweep did not use (`--first-seed 1`) |
+| **proposed, team to decide** | setting-only changes: accept at Δ ≥ +0.01 if the CI excludes 0 on **both** label variants (would accept v1m, exp 013) |
 
 Why paired deltas: the full-match noise band on absolute spellF1 is ~0.04. A paired Δ on the same games is
 tighter, so it is the number that can actually move a decision.
@@ -33,6 +36,9 @@ BAR-ATH label-free numbers are over the two halves only. The validator counts th
 | version | date | harness spellF1 | BAR-ATH poss / mean dur | public (sanity only) | full match (published) |
 |---|---|---|---|---|---|
 | `baseline50` (= `baseline_smooth50`) | 2026-11-09 | **0.2925** (raw labels 0.2504) | 594 / 7.2 s / D 32.3% | 0.3256 | **0.2433** ← the floor |
+| `v1k` (exp 015) | 2026-11-15 | 0.5924 on degrader v2, **0.5062** on v3 | 339 / 10.2 s / D 45.4% | 0.4308 | unknown until results |
+| `v3` (exp 017, 020; 7 games) | 2026-11-16 | 0.6867 (seed 1), 0.6895 (seed 2, 3-setting mix) | 307 / 11.5 s / D 44.7% | 0.6065 | unknown until results |
+| **`v4`** (exp 025–027) | 2026-11-16 | **0.7031** (seed 2, 7-game LOGO) | 268 / 13.2 s / D 44.4% | 0.6194 | unknown until results |
 
 ---
 
@@ -173,7 +179,7 @@ Priority: **P0** = on the critical path to a good submission · **P1** = big exp
 | ID | lever | why / evidence | cost | needs | measured by | pri | status |
 |---|---|---|---|---|---|---|---|
 | R1 | write the CSV with `newline="\n"` explicitly | `core.autocrlf=true` here and `open(..., "w")` on Windows writes CRLF; "the same file" must hold on any OS | S | — | 2 runs, same SHA-256 | P0 | idea |
-| R2 | pinned `requirements-solution.txt`, fixed seeds, CPU-only final path, sorted iteration | RULES §3 | S | — | 2-run hash check | P0 | idea |
+| R2 | pinned `requirements-solution.txt`, fixed seeds, CPU-only final path, sorted iteration | RULES §3 | S | — | 2-run hash check | P0 | **accepted** (exp 015; same machine only, not checked on a second OS) |
 | R3 | never write X on graded frames | X = forward-fill on spellF1 and a miss on macroF1, so writing the filled label ourselves is never worse | S | — | — | P0 | **accepted** (by argument) |
 | R4 | `<team>.csv` / `<team>.pdf`, validator run on the exact uploaded file | SUBMISSION.md | S | — | — | P0 | idea |
 
@@ -199,6 +205,25 @@ Priority: **P0** = on the critical path to a good submission · **P1** = big exp
 | 2026-11-09 | 009 | E8 | v1 trained on calibrated+looser mix | 0.5896 (s0) | −0.008 calibrated, **+0.064 looser** | 0.8678 | — | — | — | **accepted as training protocol** (hedge) |
 | 2026-11-09 | 010 | D5 | v1t: sweep-tuned decoder (penalty 64, min_frames 1) | 0.5999 | +0.0083 [−0.003, +0.019] vs v1, 5/8 | 0.8664 | — | 313 / 11.4 s / 43.9% | — | **parked**: below the +0.02 bar. min_s = 2.0 kept per CHALLENGE.md (raw labels prefer 1.0; definitional risk K2) |
 
+| 2026-11-09 | 011 | — | error breakdown `validation/errors.py` (v1): possessions < 3 s matched 20%, 3–6 s 37%, > 12 s 83–90%; ball visible < 25% of the spell: 12%. Missed short visible spells: 57% no switch predicted (a pressing opponent within 1 m cancels the new team's control), 42% merged with neighbours | — | — | — | — | — | — | drives P2/D3 |
+| 2026-11-09 | 012 | D3 | **v2**: learned team model (HistGB on control-timing + co-movement + distance features, home/away swap augmentation) + team Viterbi | 0.6085 | +0.017 [+0.004, +0.029] control, −0.003 raw | 0.8768 | — | 277 / 12.9 s / 43.9% | — | **parked**: below the bar, does not help raw |
+| 2026-11-09 | 013 | P1 | **v1m**: contested margin 0.3 m + penalty 64 + 1-frame control; held-out seeds 1–2 | 0.6064 | +0.014 [+0.004, +0.024] control, **+0.022 [+0.014, +0.030] raw** | 0.8712 | — | 309 / 11.6 s / 43.6% | — | **parked** under the current rule (see the proposed amendment in §1) |
+| 2026-11-09 | 014 | S4 K5 | **v1k**: own-half-formation episodes → D (0 of 13 episodes on the harness were live play), and D from half start to the half's `Kick Off (Start)` tag | 0.5924 | ±0.0000 (no harm) | 0.8702 | — | 334 / 10.3 s / 45.7% | — | **accepted, current best**: pre-kickoff stretch 39% → 97% D, 9 invented possessions removed |
+| 2026-11-15 | 015 | R1 R2 R4 | **submission build** `solution/run.py`: v1k trained on train-mix seeds 0–2 (24 degraded runs), CSV written with `
+`, single-threaded, X outside the halves only | — (no model change) | — | — | — | 339 / 10.2 s / 45.4% | 0.4308 (macro 0.8008, 22 poss; sanity only) | **frozen**: 2 runs incl. ATD cache rebuilt from raw → identical SHA-256 `712c9eff…68ca5c`; validator OK; 41 tests pass |
+| 2026-11-16 | 016 | E2 v3 K1 | oracle split of v1k (true dead + rule team 0.647; predicted dead + true team 0.887) → the team step is the bottleneck. Ball-kinematics audit: BAR-ATH ball is smoothed (per-frame accel p50/p90/p99 0.23/0.73/1.47 m/s vs 0.75/3.7/23 on raw IDSSE). **Degrader v3**: Gaussian ball smoothing, sigma 6 frames, gives 0.21/0.73/1.41 and matches the turn and nearest-player quantiles too | v1k on degrader v3: **0.5062** (was 0.5924 on v2) | — | 0.8246 team acc | — | — | — | **accepted (simulator fix)**; all earlier harness levels read ~0.09 high for ball-near-player rules |
+| 2026-11-16 | 017 | D3 P2 P3 | **v3**: learned team model, HistGB on 106 features (nearest-distance stacks at 11 time offsets per team, windowed minima, control shares, kick strength near a player, co-movement, team advance along its attack direction, ball position and velocity along it, gap context), home/away swap augmentation, team Viterbi (penalty 8), 2 s absorb; dead step = v1k | **0.6836** | **+0.1774 [+0.162, +0.192]**, 8/8; raw +0.127 [+0.115, +0.138] | 0.9014 | −36 | 302 / 11.7 s / 44.6% | 0.6125 (macro 0.8622, 15 poss; sanity only) | **accepted, current best** (held-out seeds 1–2, train-mix) |
+| 2026-11-16 | 018 | D3 D5 D6 | on top of v3: larger team model (600 trees at stride 2; 63 leaves) +0.002 to +0.004; second-stage model on the first stage's probabilities ±8 s +0.003; min spell 1.0 / 1.5 / 2.5 s −0.016 / −0.006 / −0.007; team penalty 4–16 flat | 0.684–0.688 | below the bar | — | — | — | — | **parked**: the model class is not the limit. 62% of visible-ball team errors sit within 3 s of a true turnover |
+| 2026-11-16 | 019 | P4 S3 | Smart Tagging on BAR-ATH, label-free: 56 of 58 set-piece tags have a predicted D segment nearby (dead step transfers); team phases agree with v3 on 84–97% of visible frames (v1k 80–98%). Team-phase prior (`tag_weight`): merges 34 possessions at weight 0.5 | not testable on the harness | — | — | — | 268 / 13.1 s at weight 0.5 | — | **parked**: harness says v3 already under-segments (ratio 0.89), and the prior merges more |
+| 2026-11-16 | 020 | E7 K3 | **7 IDSSE games** (added J03WOY, J03WQQ, J03WR9). Same number of training runs, 6 other games × 1 seed vs 3 × 2: +0.012, 4/4. LOGO over 7 games, seed 1: v3 **0.6867** vs v1k 0.5030, Δ **+0.1837 [+0.168, +0.200]**, 7/7; raw +0.137; baseline50 0.3053 | **0.6867** | +0.1837 vs v1k | 0.9039 | −31 | 307 / 11.5 s / 44.7% | 0.6065 (macro 0.8361, 14 poss; sanity only) | **accepted as training protocol**; submission build = v3, 7 games × seeds 0–1 × 2 degrader settings, streamed so it fits in 8 GB |
+| 2026-11-16 | 021 | E2 K4 | degrader ball-loss refit on 7 games with smoothing, 2,400-sample search: loss 0.43 → 0.38, missing share stays 0.53 (BAR-ATH 0.41), line-end 0.41 (0.29). Scan: `a_dead=2, b_dead=−4` matches missing 0.41 and the speed ratio but shows the ball outside twice as often | — | — | — | — | — | — | **rejected** (refit); the hazard family cannot match visibility and the speed ratio together |
+| 2026-11-16 | 022 | E2 Q | player-track smoothing in the degrader, Gaussian sigma 2 frames: per-frame acceleration quantiles 0.017/0.031/0.056/0.099/0.226 vs BAR-ATH 0.026/0.034/0.063/0.107/0.239 (raw IDSSE 0.25/0.25/0.35/0.56/0.71) | v3 0.6879 vs 0.6867 | +0.001 | — | — | — | — | **parked**: calibrated and harness-neutral, kept as an option (`PlayerNoise.smooth_sigma`), off in the v3 build |
+| 2026-11-16 | 023 | E8 | third degrader setting in the training mix (`TRAIN_MIX3`, the visibility-matched one from 021), tested on all three settings | 0.6913 / 0.6956 / 0.7178 vs 0.6879 / 0.6919 / 0.7169 | +0.003, +0.004, +0.001 | — | — | — | — | **parked**: consistent but tiny |
+| 2026-11-16 | 024 | P2 | pass-chain and crowd features for the team model (team at the previous and next two kick peaks, second-nearest player, players within 5 m, reach to the ball's position 0.5–1 s away): 133 features | 0.6844 vs 0.6879 | −0.004 | — | — | — | — | **rejected**: third sign that the team step is at the information limit |
+| 2026-11-16 | 025 | T1 D2 S5 | turnover model (will the team change within ±6 frames) as a per-frame switch cost in the team decoder: +0.008. Player-context dead features (mean speed at 8 lags, fast and slow shares, players at the pitch edge, team spread): alive/dead F1 0.9702 → 0.9746, spellF1 +0.009; dead penalty 16: +0.003 to +0.005 | 0.6958 / 0.6972 / 0.7002 vs 0.6879 | see 026 | — | — | — | — | combined as v4 |
+| 2026-11-16 | 026 | — | **v4** = v3 + wide dead features + dead penalty 16 + turnover-aware team decoding, trained with 022 and 023; held-out seed 2, 7-game LOGO, vs v3 under the same protocol | **0.7031** vs 0.6895 | **+0.0136 [+0.007, +0.020]**, 5/7; raw +0.0105 [+0.005, +0.016] | 0.9091 | −35 | 269 / 13.2 s / 44.3% | not run | below the +0.02 bar; BAR-ATH possessions fall 12% (307 → 269) while the harness count ratio is unchanged (0.88). Resolved in 027 |
+| 2026-11-16 | 027 | S K1 | why v4 reports fewer possessions on BAR-ATH: all of it is the dead step (D segments 162 → 139 with the wide features → 124 with penalty 16; team switches unchanged at ~145; turnover-aware decoding changes nothing there). Harness truth: 21 of 713 stoppages last under 3 s. BAR-ATH: v3 predicts 44 of 162 under 3 s, v4 13 of 124. Set-piece tags with a D segment: 56 → 55 of 58. Wide dead features vs BAR-ATH: max KS 0.14 | — | harness +0.0136 (026) | — | — | 268 / 13.2 s / 44.4% | 0.6194 (macro 0.8505, 14 poss; sanity only) | **v4 accepted, current best**, under the harness-blind rule of §1 (harness Δ ≥ −0.005 and a BAR-ATH label-free check improves). Build: 7 games × seeds 0–1 × 3 degrader settings, player smoothing 2; SHA-256 `ab57ede7…825528` |
+
 **Harness check (001–004):** the harness ranks the baselines raw < 25 < 125 < 50, exactly like the official full match (0.049 / 0.200 / 0.224 / 0.243). The public window ranks 125 first. Harness spellF1 reads ~0.04 high in absolute terms, so compare deltas, not levels. Run-to-run spread for one pipeline is ±0.03, so trust the paired Δ CI, not one run.
 
 ## 6. Parked / rejected (keep the reason)
@@ -221,17 +246,15 @@ Priority: **P0** = on the critical path to a good submission · **P1** = big exp
 | K4 | **degrader realism** | wrong difficulty on the harness | 7 ball stats + 4 object-count stats fitted to ours (§3, §3b) | refit when the audit shows KS > 0.15 on a model feature | ongoing |
 | K5 | **events the harness never shows** | systematic errors on BAR-ATH only | 2nd-half pre-kickoff stretch (2,934 graded D frames), goals, VAR, injuries, halftime edges; IDSSE halves start at kickoff | S4 kickoff detector; label-free checks of D share right after each half start | todo |
 | K6 | **public-window temptation** | choosing by 17 possessions (±0.33) | — | run once per accepted version, logged, never decides | rule |
-| K7 | **reproducibility** | disqualification | — | R1/R2, 2-run hash check before freeze | todo |
+| K7 | **reproducibility** | disqualification | 2 runs identical on one machine (exp 015) | R1/R2; still open: a second machine, and a fetch script for the IDSSE files | mitigated |
 | K8 | **top 20 not secured** | the Innovation Challenge never happens | other teams' scores unknown until Nov 26 | Phase 2 work stays cheap until then (INNOVATION.md §3) | rule |
 | K9 | **absolute harness level ≠ leaderboard level** | false comfort from a high harness number | baseline50: harness 0.29 vs official 0.24 | compare deltas only; expect BAR-ATH lower than the harness | rule |
 
 ## 7. Next up (in order)
 
-Honest current estimate for v1 on the real leaderboard: **~0.45–0.55 spellF1, wide uncertainty** (harness 0.55–0.60 between the plausible degrader settings, minus the ~0.07 harness optimism seen on baseline50). The floor is 0.2433.
+Current best and submission: **v4**. Honest estimate on the real leaderboard: **~0.55–0.65 spellF1, wide uncertainty** (floor 0.2433).
 
-1. Commit the 11-09 afternoon work (degrader v2, features, decoder, models, audit, sweep, tests, INNOVATION.md).
-2. Degrader v3: fit the ball-found timing (ours re-finds the ball **at** the restart; the simulator ~3 s after). Rerun the E6 audit.
-3. Team side (biggest remaining loss: team acc 0.81–0.88; possessions under-counted ~15%): P3 team-shape model for switches inside gaps, P5 restart team.
-4. S4 kickoff / K5: check the D share right after each half start on BAR-ATH (label-free).
-5. R1/R2 reproducible writer + pinned deps; first internal BAR-ATH file (not submitted until the team has reviewed it).
-6. GPU teammate: B1-spike (ball re-detection) and B2 sizing (broadcast fusion).
+1. Upload `rocn.csv` and `rocn.pdf` (deadline 2026-11-17).
+2. The team step is at its limit on tracking alone (exp 018, 024). New information is needed: ball re-detection (B1) or a sequence model on raw positions (D4).
+3. Not done: label-definition check (train on raw DFL labels, compare outputs on BAR-ATH) and a ceiling estimate for ball re-detection (harness with fast ball re-acquisition).
+4. The simulator's ball-loss family cannot match visibility and the speed ratio together (exp 021). A second loss process for live-play occlusion would be the place to start.

@@ -40,6 +40,7 @@ def main(n_wide=500, n_local=400):
     rng = np.random.default_rng(0)
     matches = [idsse.load(mid) for mid in idsse.available()]
     matches = [replace(m, ball=dg.unfreeze_dead_ball(m, np.random.default_rng(2))) for m in matches]
+    matches = [replace(m, ball=dg.smooth_ball(m, dg.BALL_SIGMA)) for m in matches]
     players = [dg.degrade_players(m, dg.PlayerNoise(), np.random.default_rng(1)) for m in matches]
     cache = []
     for m, (xy, team) in zip(matches, players):
@@ -59,4 +60,4 @@ def main(n_wide=500, n_local=400):
 
 
 if __name__ == "__main__":
-    main()
+    main(*(int(a) for a in sys.argv[1:3]))

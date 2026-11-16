@@ -177,10 +177,10 @@ Each phase = one focused Claude session. Start a session with: "read planning/PL
 |---|---|---|
 | 0 | done 11-09 | `.venv` (py 3.10, numpy 2.2.6, pandas 2.3.3, kloppy 3.18.0, scipy, pytest); system python has no pandas. 25 tests in `solution/tests` pass (metric contract, data contract, bit-exact baseline regen). Scorer reproduces public board. data/README.md note was stale |
 | 1 | mostly done 11-09 | `solution/io_atd.py` → `data/cache/` npz (13 s parse, ~1 s load), `solution/match.py` common format. `tagging.py` still to do |
-| 2 | todo | |
+| 2 | done 11-15 | folded into v1 (phase 4); `solution/run.py` is the one-command entry |
 | 3 | done 11-09 | 2 IDSSE games × 3 degrade seeds; ranks baselines like the official full match. See IMPROVEMENTS.md E1–E3, exp 001–004 |
-| 4 | in progress 11-09 | v1 (learned dead/live + Viterbi + last-controller team track) +0.29 over baseline on 4 games; leak found and fixed; mixed-degrader training; tuning parked (+0.008). See IMPROVEMENTS.md 005–010 |
-| 5 | todo | |
-| 6 | todo | |
-| 7 | todo | |
-| 8 | todo | |
+| 4 | redone 11-16 (**v3**, then **v4**) | oracle split showed the team step was the bottleneck; degrader smooths ball and players like BAR-ATH; learned team model on 106 features; 7 IDSSE games (v3: 0.69 vs v1k 0.50). v4 adds player-only dead features, a turnover model for the team decoder and a third degrader setting (0.7031 vs 0.6895). See IMPROVEMENTS.md 016–027 |
+| 5 | not built | out of time; listed as limitations in TECHNICAL.md |
+| 6 | not built | out of time; listed as limitations in TECHNICAL.md |
+| 7 | not built | out of time; listed as limitations in TECHNICAL.md |
+| 8 | rebuilt 11-16, upload pending | submission = **v4**: `python solution/run.py --name rocn` → `evaluation/results/rocn.csv` (SHA-256 `ab57ede7…825528`), validator OK, public sanity 0.6194. Needs ~8 GB and ~45 min single-threaded. Report: `python planning/make_pdf.py planning/TECHNICAL.md evaluation/results/rocn.pdf` (cover and figure numbers in `planning/report_numbers.json`). IDSSE files: `python validation/fetch_idsse.py`. Still to do by the team: confirm the team name, push, upload the form |

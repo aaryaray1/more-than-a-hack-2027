@@ -1,0 +1,8 @@
+# Pinned environment that produced the submission (Python 3.10.11, Windows 11, CPU only).
+numpy==2.2.6
+scipy==1.15.3
+scikit-learn==1.7.2
+pandas==2.3.3
+joblib==1.6.0
+threadpoolctl==3.8.0
+pytest==9.2.0

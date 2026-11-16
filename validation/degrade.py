@@ -3,6 +3,7 @@ import sys
 from dataclasses import dataclass, replace
 
 import numpy as np
+from scipy.ndimage import gaussian_filter1d
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
@@ -42,6 +43,7 @@ class PlayerNoise:
     burst_median: float = 50.0
     burst_players: tuple = (3, 8)
     pos_sigma: float = 0.20  # constant per tracklet; per-frame noise would fake ~3.5 m/s of speed
+    smooth_sigma: float = 2.0  # frames; matches BAR-ATH player acceleration quantiles (exp 022)
 
 
 def near_line(ball, length, width, margin=LINE_MARGIN_M):
@@ -83,6 +85,14 @@ def _segments(rng, n, median_on, median_off, sigma, start_on):
     return out
 
 
+def smooth_track(piece, sigma):
+    out = piece.copy()
+    seen = ~np.isnan(out[:, 0])
+    if sigma > 0 and seen.sum() > 1:
+        out[seen] = gaussian_filter1d(out[seen], sigma, axis=0, mode="nearest")
+    return out
+
+
 def degrade_players(match, noise, rng):
     tracklets = []
     for slot in range(len(match.team)):
@@ -115,7 +125,7 @@ def degrade_players(match, noise, rng):
             continue
         target = free[0]
         busy[target] = stop
-        piece = match.xy[start:stop, slot].copy()
+        piece = smooth_track(match.xy[start:stop, slot], noise.smooth_sigma)
         if offset is not None:
             piece += offset
         xy[start:stop, target] = piece + rng.normal(0, noise.pos_sigma, 2)
@@ -157,10 +167,24 @@ def unfreeze_dead_ball(match, rng, roll_tau_s=0.7, max_roll_s=2.0):
     return ball
 
 
-def degrade(match, seed, ball_loss=BallLoss(), noise=PlayerNoise()):
+BALL_SIGMA = 6.0  # frames; matches BAR-ATH ball acceleration and turn quantiles (IMPROVEMENTS.md exp 016)
+
+
+def smooth_ball(match, sigma):
+    ball = match.ball.copy()
+    for start, stop in match.halves:
+        seen = np.flatnonzero(~np.isnan(ball[start:stop, 0])) + start
+        if len(seen) > 1:
+            ball[seen] = gaussian_filter1d(ball[seen], sigma, axis=0, mode="nearest")
+    return ball
+
+
+def degrade(match, seed, ball_loss=BallLoss(), noise=PlayerNoise(), ball_sigma=BALL_SIGMA):
     rng = np.random.default_rng(seed)
     if match.labels is not None and match.meta.get("dead_ball_frozen", True):
         match = replace(match, ball=unfreeze_dead_ball(match, rng))
+    if ball_sigma > 0:
+        match = replace(match, ball=smooth_ball(match, ball_sigma))
     present = ball_present_mask(match, ball_loss, rng)
     ball = np.where(present[:, None], match.ball, np.nan)
     xy, team = degrade_players(match, noise, rng)

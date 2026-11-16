@@ -20,26 +20,30 @@ SEEDS = (0, 1, 2)
 VARIANTS = ("control", "raw")
 
 
-def harness_runs(seeds=SEEDS, ball_loss=degrade.BallLoss(), tag=""):
-    runs = []
+def iter_runs(seeds=SEEDS, ball_loss=degrade.BallLoss(), tag=""):
     for match_id in idsse.available():
         clean = idsse.load(match_id)
         truth = {"raw": clean.labels, "control": labels.controlled(clean.labels, clean.fps)}
         for seed in seeds:
             run = degrade.degrade(clean, seed, ball_loss=ball_loss)
-            runs.append((match_id, replace(run, name=run.name + tag), truth))
-    return runs
+            yield match_id, replace(run, name=run.name + tag), truth
 
 
-TRAIN_MIX = ("", "a_dead=1.0,b_dead=-1.0")
+def harness_runs(seeds=SEEDS, ball_loss=degrade.BallLoss(), tag=""):
+    return list(iter_runs(seeds, ball_loss, tag))
+
+
+TRAIN_MIX = ("", "a_dead=1.0,b_dead=-1.0", "a_dead=2.0,b_dead=-4.0")
+
+
+def iter_mixed_runs(seeds, shifts=TRAIN_MIX):
+    for text in shifts:
+        ball_loss, tag = parse_shift(text)
+        yield from iter_runs(seeds, ball_loss, tag)
 
 
 def mixed_runs(seeds, shifts=TRAIN_MIX):
-    runs = []
-    for text in shifts:
-        ball_loss, tag = parse_shift(text)
-        runs += harness_runs(seeds, ball_loss, tag)
-    return runs
+    return list(iter_mixed_runs(seeds, shifts))
 
 
 def parse_shift(text):
@@ -189,6 +193,8 @@ def main():
     parser.add_argument("pipeline", choices=registry.names())
     parser.add_argument("--vs", choices=registry.names())
     parser.add_argument("--seeds", type=int, default=len(SEEDS))
+    parser.add_argument("--first-seed", type=int, default=0,
+                        help="use seeds first..first+n-1 (e.g. 1 to avoid the seed a sweep tuned on)")
     parser.add_argument("--draws", type=int, default=1000)
     parser.add_argument("--shift", metavar="K=V,...",
                         help="degrade the test games with other BallLoss values (train stays default)")
@@ -197,7 +203,7 @@ def main():
     parser.add_argument("--log", metavar="NOTE", help="append the result to planning/experiments.csv")
     args = parser.parse_args()
 
-    seeds = tuple(range(args.seeds))
+    seeds = tuple(range(args.first_seed, args.first_seed + args.seeds))
     runs = mixed_runs(seeds) if args.train_mix else harness_runs(seeds)
     ball_loss, tag = parse_shift(args.shift)
     test_runs = harness_runs(seeds, ball_loss, tag) if (args.shift or args.train_mix) else runs

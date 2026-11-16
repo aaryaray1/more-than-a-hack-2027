@@ -54,3 +54,20 @@ def test_unfrozen_dead_ball_moves():
     assert frozen < 0.05
     alive_same = bool(np.array_equal(ball[~dead], m.ball[~dead], equal_nan=True))
     assert alive_same
+
+
+def test_kickoff_rule_uses_tag_and_episodes():
+    n = 2000
+    split = np.full(n, 0.6)
+    split[1500:1600] = 0.97
+    n_seen = np.full(n, 22)
+    dead = decode.kickoff_dead(split, n_seen, [(100, 2000)], n, 25, {"1": [400]})
+    assert dead[100:400].all() and not dead[400:1500].any() and dead[1500:1600].all()
+    assert not decode.kickoff_dead(split, n_seen, [(100, 2000)], n, 25, {"1": [9000]})[100:400].any()
+
+
+def test_own_half_episode_needs_two_seconds_and_players():
+    split = np.full(500, 0.95)
+    assert decode.own_half_episodes(split, np.full(500, 22), 0, 30) == []
+    assert decode.own_half_episodes(split, np.full(500, 10), 0, 500) == []
+    assert decode.own_half_episodes(split, np.full(500, 22), 0, 500) == [(0, 500)]

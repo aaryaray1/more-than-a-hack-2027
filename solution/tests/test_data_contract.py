@@ -88,3 +88,12 @@ def test_baseline_regenerates_committed_files():
         committed = pm.read_label_csv(
             "{}/evaluation/results/{}.csv".format(ROOT, name))["label"].values.astype(str)
         assert np.array_equal(baseline.smooth(codes, window), committed), name
+
+
+@needs_data
+def test_kickoff_tags_inside_first_minutes_of_each_half():
+    from solution.tagging import kickoff_start_frames
+    tags = kickoff_start_frames()
+    for half, first, last in half_video_blocks(GAME):
+        inside = [f for f in tags.get(half, []) if first - 250 <= f <= first + 300 * 25]
+        assert len(inside) == 1
