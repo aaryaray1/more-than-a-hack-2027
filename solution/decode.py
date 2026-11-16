@@ -13,13 +13,14 @@ UNKNOWN = -1
 def viterbi_binary(p_on, penalty, halves, n_frames, eps=1e-4):
     p = np.clip(p_on, eps, 1 - eps)
     gain = (np.log(p) - np.log(1 - p)).tolist()
+    cost = np.broadcast_to(np.asarray(penalty, float), (n_frames,)).tolist()
     out = np.zeros(n_frames, bool)
     for start, stop in halves:
         score_off, score_on = 0.0, 0.0
         back_on, back_off = np.zeros(stop - start, bool), np.zeros(stop - start, bool)
         for i, t in enumerate(range(start, stop)):
-            stay_off, jump_off = score_off, score_on - penalty
-            stay_on, jump_on = score_on, score_off - penalty
+            stay_off, jump_off = score_off, score_on - cost[t]
+            stay_on, jump_on = score_on, score_off - cost[t]
             back_off[i] = jump_off > stay_off
             back_on[i] = jump_on > stay_on
             score_off = max(stay_off, jump_off)
@@ -120,3 +121,31 @@ def kickoff_dead(split, n_seen, halves, n_frames, fps, kickoff_tags=None, search
         if tagged:
             dead[start:tagged[0]] = True
     return dead
+
+
+def phase_prior(p_home, phases, trusted, n_frames, min_frames=1500, clip=0.03):
+    logit = np.zeros(n_frames)
+    base = float(np.clip(np.mean(p_home[trusted] > 0.5), clip, 1 - clip))
+    groups = {}
+    for start, stop, key in phases:
+        groups.setdefault(key, []).append((start, stop))
+    for key in sorted(groups):
+        mask = np.zeros(n_frames, bool)
+        for start, stop in groups[key]:
+            mask[start:stop] = True
+        seen = mask & trusted
+        if seen.sum() < min_frames:
+            continue
+        rate = float(np.clip(np.mean(p_home[seen] > 0.5), clip, 1 - clip))
+        bonus = np.log(rate / (1 - rate)) - np.log(base / (1 - base))
+        logit[mask] = np.where(np.abs(bonus) > np.abs(logit[mask]), bonus, logit[mask])
+    return logit
+
+
+def shift_probability(p, logit, eps=1e-4):
+    q = np.clip(p, eps, 1 - eps)
+    return 1.0 / (1.0 + np.exp(-(np.log(q) - np.log(1 - q) + logit)))
+
+
+def switch_cost(p_turn, weight, low, high, eps=1e-4):
+    return np.clip(-weight * np.log(np.clip(p_turn, eps, 1.0)), low, high)

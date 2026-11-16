@@ -1,0 +1,62 @@
+{
+  "title": "Ball possession from automatic tracking",
+  "subtitle": "Technical document",
+  "abstract": "This document explains how we label every frame of a match with the team in possession, using automatic tracking alone. The ball is invisible on 41% of the graded frames, so the problem is one of time-series segmentation: first decide whether the ball is dead or alive, then decide which team controls it. The models are gradient-boosted trees trained on seven open matches from another league, whose tracking is first degraded to behave like the provided tracking. No label from the provided match is used anywhere. Scored on matches the models never saw, spellF1 rises from 0.31 for the baseline to 0.70.",
+  "headline": [
+    [
+      "0.70",
+      "spellF1 on unseen matches",
+      "baseline 0.31"
+    ],
+    [
+      "7",
+      "open training matches",
+      "no label from the provided match"
+    ],
+    [
+      "55 / 58",
+      "set-piece tags matched",
+      "label-free check on the provided match"
+    ]
+  ],
+  "scores": [
+    [
+      "baseline, majority vote",
+      0.31
+    ],
+    [
+      "rule-based team step (v1k)",
+      0.5
+    ],
+    [
+      "learned team model (v3)",
+      0.69
+    ],
+    [
+      "submitted (v4)",
+      0.7
+    ]
+  ],
+  "match_rate_by_length": [
+    [
+      "under 3",
+      30
+    ],
+    [
+      "3 to 6",
+      56
+    ],
+    [
+      "6 to 12",
+      78
+    ],
+    [
+      "12 to 25",
+      89
+    ],
+    [
+      "over 25",
+      94
+    ]
+  ]
+}

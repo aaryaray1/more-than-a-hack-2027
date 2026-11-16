@@ -55,8 +55,9 @@ def load(source="tactical", game=GAME, refresh=False):
 
 def with_tags(match, game, source):
     if source == "tactical":
-        from solution.tagging import kickoff_start_frames
+        from solution.tagging import kickoff_start_frames, team_phases
         match.meta["kickoff_tags"] = {str(k): v for k, v in kickoff_start_frames(game).items()}
+        match.meta["team_phases"] = team_phases(game)
     return match
 
 
